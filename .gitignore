@@ -1,0 +1,23 @@
+# Environment (no versionar secretos)
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+
+# Build / output
+dist/
+build/
+.vite/
+*.tsbuildinfo
+
+# Prisma (cliente generado)
+backend/generated/
+
+# IDE / OS
+.idea/
+.vscode/
+*.log
+.DS_Store
+Thumbs.db
