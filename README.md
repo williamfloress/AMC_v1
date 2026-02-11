@@ -4,6 +4,44 @@ Proyecto MVP del sistema de Avaluo por Método Comparativo (AMC). Backend NestJS
 
 ---
 
+## Base de datos (Supabase) — Migraciones y seed
+
+La base de datos se configura con **Prisma** en `backend`. No versiones el archivo `.env`; usa `.env.example` como plantilla y guarda la `DATABASE_URL` en un gestor de secretos.
+
+### Aplicar migraciones
+
+Desde la raíz del backend:
+
+```bash
+cd amc-v1/backend
+npx prisma migrate deploy
+```
+
+En desarrollo, para crear una nueva migración tras cambiar `prisma/schema.prisma`:
+
+```bash
+npx prisma migrate dev --name nombre_descriptivo
+```
+
+La `DATABASE_URL` se obtiene en Supabase: Project Settings > Database > Connection string (modo Transaction, puerto 6543, para uso con Prisma).
+
+### Cargar datos de ejemplo (seed)
+
+El seed crea el sector LOS NARANJOS, el catálogo de acabados, las ponderaciones y 15 propiedades de ejemplo. Ejecutar **después** de haber aplicado las migraciones:
+
+```bash
+cd amc-v1/backend
+npx prisma db seed
+```
+
+Para resetear la base y volver a aplicar migraciones y seed:
+
+```bash
+npx prisma migrate reset
+```
+
+---
+
 ## Definition of Done del MVP
 
 El MVP se considera **listo** cuando se cumplan todos los criterios siguientes:
@@ -30,3 +68,4 @@ El MVP se considera **listo** cuando se cumplan todos los criterios siguientes:
 
 ---
 
+Documentación detallada: `documentacion/GUIA_DESARROLLO_MVP.md` y `documentacion/ROADMAP_MVP.md`.
