@@ -1,0 +1,71 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- Enums ---
+
+enum TipoAcabado {
+  piso
+  cocina
+  bano
+}
+
+// --- Modelos ---
+
+model Sector {
+  id        Int         @id @default(autoincrement())
+  nombre    String      @unique
+  propiedades Propiedad[]
+}
+
+model Acabado {
+  id      Int         @id @default(autoincrement())
+  tipo    TipoAcabado
+  nombre  String
+  puntaje Int
+
+  propiedadesPiso   Propiedad[] @relation("AcabadoPiso")
+  propiedadesCocina  Propiedad[] @relation("AcabadoCocina")
+  propiedadesBano   Propiedad[] @relation("AcabadoBano")
+}
+
+model PonderacionAcabado {
+  id          Int         @id @default(autoincrement())
+  tipo        TipoAcabado @unique
+  ponderacion Int
+}
+
+model Propiedad {
+  id                   Int       @id @default(autoincrement())
+  sectorId             Int
+  precio               Decimal   @db.Decimal(14, 2)
+  areaConstruccionM2   Decimal   @map("area_construccion_m2") @db.Decimal(10, 2)
+  habitaciones         Int
+  banos                Int
+  parqueos             Int
+  acabadoPisoId        Int       @map("acabado_piso_id")
+  acabadoCocinaId      Int       @map("acabado_cocina_id")
+  acabadoBanoId        Int       @map("acabado_bano_id")
+  portal               String?
+  codPublicacion       String?   @unique @map("cod_publicacion")
+  fechaRegistro        DateTime  @default(now()) @map("fecha_registro")
+  columnaAux           Int?      @map("columna_aux")
+
+  sector        Sector  @relation(fields: [sectorId], references: [id], onDelete: Restrict)
+  acabadoPiso   Acabado @relation("AcabadoPiso", fields: [acabadoPisoId], references: [id], onDelete: Restrict)
+  acabadoCocina Acabado @relation("AcabadoCocina", fields: [acabadoCocinaId], references: [id], onDelete: Restrict)
+  acabadoBano   Acabado @relation("AcabadoBano", fields: [acabadoBanoId], references: [id], onDelete: Restrict)
+
+  @@index([sectorId])
+  @@index([sectorId, areaConstruccionM2])
+  @@index([sectorId, precio])
+}
