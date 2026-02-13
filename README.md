@@ -93,4 +93,42 @@ Asegúrate de tener `npm install` ya ejecutado en `backend` y en `frontend` al m
 
 ---
 
+## Producción (deploy del MVP)
+
+El MVP se despliega con **backend en Railway** y **frontend en Vercel**. La base de datos sigue en **Supabase** (free tier).
+
+### Backend (Railway)
+
+1. Crear un servicio en [Railway](https://railway.app) conectado al repo (por ejemplo la rama `main`).
+2. **Root Directory:** `backend`.
+3. **Build:** Railway ejecuta `npm run build` por defecto. El script incluye `prisma generate && nest build` para generar el cliente Prisma y compilar NestJS.
+4. **Start Command:** `npm run start:prod` o `node dist/main`.
+5. **Variables de entorno** (en Railway → Variables):
+   - `DATABASE_URL` — connection string de Supabase (pooler, puerto 6543).
+   - `DIRECT_URL` — connection string directa de Supabase (puerto 5432).
+   - `PORT` — opcional; Railway asigna uno por defecto.
+   - `CORS_ORIGIN` — URL del frontend en producción, por ejemplo `https://amc-v1.vercel.app` (debe ser **https** para que el navegador permita las peticiones).
+6. En **Networking** → **Public Networking** → **Generate Domain** para obtener la URL pública del API (ej. `https://amcv1-production.up.railway.app`).
+
+### Frontend (Vercel)
+
+1. Crear un proyecto en [Vercel](https://vercel.com) conectado al mismo repo.
+2. **Root Directory:** `frontend`.
+3. **Build / Output:** dejar la detección automática (Build: `npm run build`, Output: `dist`).
+4. **Variable de entorno:**
+   - **Nombre:** `VITE_API_BASE_URL` (el código usa este nombre, no `VITE_API_URL`).
+   - **Valor:** URL completa del backend en Railway, por ejemplo `https://amcv1-production.up.railway.app` (con `https://`).
+5. Tras cada cambio de variables, hacer **Redeploy** para que el build use los nuevos valores.
+
+### Resumen de integración
+
+| Dónde   | Variable            | Valor de ejemplo                                      |
+|--------|---------------------|-------------------------------------------------------|
+| Railway | `CORS_ORIGIN`       | `https://amc-v1.vercel.app`                           |
+| Vercel  | `VITE_API_BASE_URL` | `https://amcv1-production.up.railway.app`            |
+
+Para **desarrollo local** contra el backend en Railway, en `frontend/.env` puedes poner `VITE_API_BASE_URL=https://tu-url.up.railway.app`. Para usar el backend local, deja `VITE_API_BASE_URL=http://localhost:3000` y levanta el backend con `npm run dev:backend`.
+
+---
+
 Documentación detallada: `documentacion/GUIA_DESARROLLO_MVP.md` y `documentacion/ROADMAP_MVP.md`.
