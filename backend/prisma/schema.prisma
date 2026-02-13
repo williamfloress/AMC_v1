@@ -19,11 +19,20 @@ enum TipoAcabado {
   bano
 }
 
+enum EstadoPropiedad {
+  disponible
+  reservada
+  alquilada
+  vendida
+}
+
 // --- Modelos ---
 
 model Sector {
-  id        Int         @id @default(autoincrement())
-  nombre    String      @unique
+  id          Int       @id @default(autoincrement())
+  nombre      String    @unique
+  latitud     Decimal?  @db.Decimal(10, 7)
+  longitud    Decimal?  @db.Decimal(10, 7)
   propiedades Propiedad[]
 }
 
@@ -55,6 +64,10 @@ model Propiedad {
   acabadoPisoId        Int       @map("acabado_piso_id")
   acabadoCocinaId      Int       @map("acabado_cocina_id")
   acabadoBanoId        Int       @map("acabado_bano_id")
+  anioConstruccion      Int?      @map("anio_construccion")
+  estado               EstadoPropiedad @default(disponible) @map("estado")
+  latitud              Decimal?      @map("latitud") @db.Decimal(10, 7)
+  longitud             Decimal?      @map("longitud") @db.Decimal(10, 7)
   portal               String?
   codPublicacion       String?   @unique @map("cod_publicacion")
   fechaRegistro        DateTime  @default(now()) @map("fecha_registro")

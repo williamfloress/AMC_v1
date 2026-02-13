@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsNumber, Min } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsInt, IsNumber, Min, IsOptional, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class RunAmcDto {
@@ -14,18 +14,47 @@ export class RunAmcDto {
   @Type(() => Number)
   areaM2!: number;
 
-  @ApiProperty({ example: 1, description: 'ID del acabado de piso del inmueble en estudio' })
+  @ApiProperty({ example: 3, description: 'Cantidad de cuartos/habitaciones' })
   @IsInt()
+  @Min(0)
   @Type(() => Number)
-  finishPisoId!: number;
+  habitaciones!: number;
 
-  @ApiProperty({ example: 2, description: 'ID del acabado de cocina' })
+  @ApiProperty({ example: 2, description: 'Cantidad de baños' })
   @IsInt()
+  @Min(0)
   @Type(() => Number)
-  finishCocinaId!: number;
+  banos!: number;
 
-  @ApiProperty({ example: 1, description: 'ID del acabado de baño' })
+  @ApiProperty({ example: 2, description: 'Número de estacionamientos' })
+  @IsInt()
+  @Min(0)
+  @Type(() => Number)
+  parqueos!: number;
+
+  @ApiPropertyOptional({ example: 2015, description: 'Año de construcción (opcional)' })
+  @IsOptional()
+  @IsInt()
+  @Min(1900)
+  @Max(2100)
+  @Type(() => Number)
+  anioConstruccion?: number;
+
+  @ApiPropertyOptional({ example: 1, description: 'ID del acabado de piso (opcional)' })
+  @IsOptional()
   @IsInt()
   @Type(() => Number)
-  finishBanoId!: number;
+  finishPisoId?: number;
+
+  @ApiPropertyOptional({ example: 2, description: 'ID del acabado de cocina (opcional)' })
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  finishCocinaId?: number;
+
+  @ApiPropertyOptional({ example: 1, description: 'ID del acabado de baño (opcional)' })
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  finishBanoId?: number;
 }

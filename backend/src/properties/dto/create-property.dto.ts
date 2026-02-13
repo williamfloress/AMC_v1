@@ -4,10 +4,13 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsEnum,
   Min,
+  Max,
   MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { EstadoPropiedad } from '@prisma/client';
 
 export class CreatePropertyDto {
   @ApiProperty({ example: 1, description: 'ID del sector' })
@@ -59,6 +62,38 @@ export class CreatePropertyDto {
   @IsInt()
   @Type(() => Number)
   acabadoBanoId!: number;
+
+  @ApiPropertyOptional({ example: 2015, description: 'Año de construcción de la propiedad' })
+  @IsOptional()
+  @IsInt()
+  @Min(1900)
+  @Type(() => Number)
+  anioConstruccion?: number;
+
+  @ApiPropertyOptional({
+    enum: EstadoPropiedad,
+    description: 'Estado: disponible, reservada, alquilada, vendida',
+    default: 'disponible',
+  })
+  @IsOptional()
+  @IsEnum(EstadoPropiedad)
+  estado?: EstadoPropiedad;
+
+  @ApiPropertyOptional({ example: -12.0464, description: 'Latitud del pin en el mapa' })
+  @IsOptional()
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  @Type(() => Number)
+  latitud?: number;
+
+  @ApiPropertyOptional({ example: -77.0428, description: 'Longitud del pin en el mapa' })
+  @IsOptional()
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  @Type(() => Number)
+  longitud?: number;
 
   @ApiPropertyOptional({ example: 'Mercadolibre' })
   @IsOptional()

@@ -1,5 +1,7 @@
 import { api } from './client';
 
+export type EstadoPropiedad = 'disponible' | 'reservada' | 'alquilada' | 'vendida';
+
 export interface Propiedad {
   id: number;
   sectorId: number;
@@ -8,6 +10,10 @@ export interface Propiedad {
   habitaciones: number;
   banos: number;
   parqueos: number;
+  anioConstruccion?: number | null;
+  estado: EstadoPropiedad;
+  latitud?: number | null;
+  longitud?: number | null;
   portal?: string | null;
   codPublicacion?: string | null;
   sector: { id: number; nombre: string };
@@ -26,6 +32,10 @@ export interface CreatePropertyBody {
   acabadoPisoId: number;
   acabadoCocinaId: number;
   acabadoBanoId: number;
+  anioConstruccion?: number;
+  estado?: EstadoPropiedad;
+  latitud?: number;
+  longitud?: number;
   portal?: string;
   codPublicacion?: string;
   columnaAux?: number;

@@ -1,29 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useSectors, useFinishes } from '../hooks/useCatalog';
 import * as propertiesApi from '../api/properties';
-import type { Propiedad, CreatePropertyBody } from '../api/properties';
+import type { Propiedad, CreatePropertyBody, EstadoPropiedad } from '../api/properties';
 import { Loading, ApiErrorMessage } from '../components/ApiStatus';
+import MapPicker from '../components/MapPicker';
+import PropiedadesMap from '../components/PropiedadesMap';
 import type { ApiError } from '../api/client';
 
-const tableStyle: React.CSSProperties = {
-  width: '100%',
-  borderCollapse: 'collapse',
-  background: '#fff',
-  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-};
-const thStyle: React.CSSProperties = {
-  textAlign: 'left',
-  padding: '0.75rem',
-  borderBottom: '2px solid #e5e5e5',
-};
-const tdStyle: React.CSSProperties = {
-  padding: '0.75rem',
-  borderBottom: '1px solid #e5e5e5',
-};
-const formRow = { marginBottom: '0.75rem' };
-const inputStyle = { padding: '0.5rem', width: '100%', maxWidth: 200 };
+const ESTADOS: { value: EstadoPropiedad; label: string }[] = [
+  { value: 'disponible', label: 'Disponible' },
+  { value: 'reservada', label: 'Reservada' },
+  { value: 'alquilada', label: 'Alquilada' },
+  { value: 'vendida', label: 'Vendida' },
+];
 
-export default function Propiedades() {
+function estadoLabel(estado: EstadoPropiedad): string {
+  return ESTADOS.find((e) => e.value === estado)?.label ?? estado;
+}
+
+function Propiedades() {
   const { sectors, loading: loadingSectors, error: errorSectors } = useSectors();
   const { finishes: finishesPiso } = useFinishes('piso');
   const { finishes: finishesCocina } = useFinishes('cocina');
@@ -41,11 +36,16 @@ export default function Propiedades() {
     habitaciones: 0,
     banos: 0,
     parqueos: 0,
+    anioConstruccion: undefined,
+    estado: 'disponible',
+    latitud: undefined,
+    longitud: undefined,
     acabadoPisoId: 0,
     acabadoCocinaId: 0,
     acabadoBanoId: 0,
   });
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [showMapPicker, setShowMapPicker] = useState(false);
 
   const validateForm = (): string | null => {
     if (form.precio <= 0) return 'El precio debe ser mayor a 0.';
@@ -73,11 +73,16 @@ export default function Propiedades() {
       habitaciones: 0,
       banos: 0,
       parqueos: 0,
+      anioConstruccion: undefined,
+      estado: 'disponible',
+      latitud: undefined,
+      longitud: undefined,
       acabadoPisoId: finishesPiso[0]?.id ?? 0,
       acabadoCocinaId: finishesCocina[0]?.id ?? 0,
       acabadoBanoId: finishesBano[0]?.id ?? 0,
     });
     setSubmitError(null);
+    setShowMapPicker(true);
     setModalOpen(true);
   };
 
@@ -90,11 +95,16 @@ export default function Propiedades() {
       habitaciones: p.habitaciones,
       banos: p.banos,
       parqueos: p.parqueos,
+      anioConstruccion: p.anioConstruccion ?? undefined,
+      estado: p.estado ?? 'disponible',
+      latitud: p.latitud ?? undefined,
+      longitud: p.longitud ?? undefined,
       acabadoPisoId: p.acabadoPiso.id,
       acabadoCocinaId: p.acabadoCocina.id,
       acabadoBanoId: p.acabadoBano.id,
     });
     setSubmitError(null);
+    setShowMapPicker(true);
     setModalOpen(true);
   };
 
@@ -137,182 +147,299 @@ export default function Propiedades() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h1 style={{ margin: 0 }}>Propiedades</h1>
-        <button
-          type="button"
-          onClick={openCreate}
-          style={{ padding: '0.5rem 1rem', background: '#0ea5e9', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-        >
-          + Agregar propiedad
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+        <div>
+          <h1 className="acm-page-title" style={{ marginBottom: '0.25rem' }}>Mis propiedades</h1>
+          <p className="acm-muted" style={{ marginBottom: 0, fontSize: '0.9375rem' }}>
+            Gestiona las propiedades comparables para tus reportes ACM.
+          </p>
+        </div>
+        <button type="button" onClick={openCreate} className="acm-btn-primary">
+          + Agregar inmueble
         </button>
       </div>
       {error && <ApiErrorMessage error={error} />}
+      {!loading && list.length > 0 && (
+        <div className="acm-card" style={{ marginBottom: '1.25rem' }}>
+          <h2 className="acm-card-title" style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>Mapa de propiedades</h2>
+          <PropiedadesMap propiedades={list} height="360px" />
+        </div>
+      )}
       {loading ? (
         <Loading />
       ) : (
-        <table style={tableStyle}>
-          <thead>
-            <tr>
-              <th style={thStyle}>Sector</th>
-              <th style={thStyle}>m²</th>
-              <th style={thStyle}>Hab</th>
-              <th style={thStyle}>Baños</th>
-              <th style={thStyle}>Parq.</th>
-              <th style={thStyle}>Acabados</th>
-              <th style={thStyle}>Precio</th>
-              <th style={thStyle}>Valor/m²</th>
-              <th style={thStyle}>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.map((p) => (
-              <tr key={p.id}>
-                <td style={tdStyle}>{p.sector.nombre}</td>
-                <td style={tdStyle}>{p.areaConstruccionM2}</td>
-                <td style={tdStyle}>{p.habitaciones}</td>
-                <td style={tdStyle}>{p.banos}</td>
-                <td style={tdStyle}>{p.parqueos}</td>
-                <td style={tdStyle}>
-                  {p.acabadoPiso.nombre} / {p.acabadoCocina.nombre} / {p.acabadoBano.nombre}
-                </td>
-                <td style={tdStyle}>{p.precio.toLocaleString()}</td>
-                <td style={tdStyle}>
-                  {p.areaConstruccionM2 > 0
-                    ? (p.precio / p.areaConstruccionM2).toFixed(2)
-                    : '-'}
-                </td>
-                <td style={tdStyle}>
-                  <button type="button" onClick={() => openEdit(p)} style={{ marginRight: 8 }}>Editar</button>
-                  <button type="button" onClick={() => handleDelete(p.id)}>Eliminar</button>
-                </td>
+        <div className="acm-card" style={{ padding: 0, overflow: 'hidden' }}>
+          <table className="acm-table">
+            <thead>
+              <tr>
+                <th>Sector</th>
+                <th>m²</th>
+                <th>Hab</th>
+                <th>Baños</th>
+                <th>Parq.</th>
+                <th>Año</th>
+                <th>Estado</th>
+                <th>Acabados</th>
+                <th>Precio</th>
+                <th>Valor/m²</th>
+                <th>Acciones</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {list.map((p) => (
+                <tr key={p.id}>
+                  <td>{p.sector.nombre}</td>
+                  <td>{p.areaConstruccionM2}</td>
+                  <td>{p.habitaciones}</td>
+                  <td>{p.banos}</td>
+                  <td>{p.parqueos}</td>
+                  <td>{p.anioConstruccion ?? '-'}</td>
+                  <td>
+                    <span className={`acm-badge acm-badge-${p.estado}`}>
+                      {estadoLabel(p.estado)}
+                    </span>
+                  </td>
+                  <td>
+                    {p.acabadoPiso.nombre} / {p.acabadoCocina.nombre} / {p.acabadoBano.nombre}
+                  </td>
+                  <td>{p.precio.toLocaleString()}</td>
+                  <td>
+                    {p.areaConstruccionM2 > 0
+                      ? (p.precio / p.areaConstruccionM2).toFixed(2)
+                      : '-'}
+                  </td>
+                  <td>
+                    {p.latitud != null && p.longitud != null && (
+                      <a
+                        href={`https://www.google.com/maps?q=${p.latitud},${p.longitud}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="acm-btn-secondary"
+                        style={{ marginRight: 8, textDecoration: 'none', display: 'inline-block' }}
+                      >
+                        Ver mapa
+                      </a>
+                    )}
+                    <button type="button" className="acm-btn-secondary" style={{ marginRight: 8 }} onClick={() => openEdit(p)}>
+                      Editar
+                    </button>
+                    <button type="button" className="acm-btn-secondary" onClick={() => handleDelete(p.id)}>
+                      Eliminar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
-      {list.length === 0 && !loading && <p style={{ color: '#64748b' }}>No hay propiedades. Agregue al menos una.</p>}
+      {list.length === 0 && !loading && <p className="acm-muted">No hay propiedades. Agregue al menos una.</p>}
 
       {modalOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: '#fff', padding: '1.5rem', borderRadius: 8, maxWidth: 400, width: '90%' }}>
-            <h2 style={{ marginTop: 0 }}>{editingId ? 'Editar propiedad' : 'Agregar propiedad'}</h2>
+        <div className="acm-modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="acm-card" style={{ maxWidth: 640, width: '95%', maxHeight: '90vh', overflowY: 'auto', position: 'relative', isolation: 'isolate' }}>
+            <h2 className="acm-card-title" style={{ fontSize: '1.125rem' }}>{editingId ? 'Editar propiedad' : 'Agregar propiedad'}</h2>
             <form onSubmit={handleSubmit}>
-              <div style={formRow}>
-                <label>Sector</label>
-                <select
-                  style={inputStyle}
-                  value={form.sectorId}
-                  onChange={(e) => setForm({ ...form, sectorId: Number(e.target.value) })}
-                  required
-                >
-                  {sectors.map((s) => (
-                    <option key={s.id} value={s.id}>{s.nombre}</option>
-                  ))}
-                </select>
+              <div className="acm-property-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 1.25rem 0.875rem' }}>
+                <div className="acm-form-row">
+                  <label className="acm-label">Sector</label>
+                  <select
+                    className="acm-select"
+                    style={{ maxWidth: 'none' }}
+                    value={form.sectorId}
+                    onChange={(e) =>
+                    setForm({
+                      ...form,
+                      sectorId: Number(e.target.value),
+                      latitud: undefined,
+                      longitud: undefined,
+                    })
+                  }
+                    required
+                  >
+                    {sectors.map((s) => (
+                      <option key={s.id} value={s.id}>{s.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="acm-form-row">
+                  <label className="acm-label">Precio</label>
+                  <input
+                    type="number"
+                    min={0.01}
+                    step={0.01}
+                    className="acm-input"
+                    style={{ maxWidth: 'none' }}
+                    value={form.precio || ''}
+                    onChange={(e) => setForm({ ...form, precio: Number(e.target.value) })}
+                    required
+                  />
+                </div>
+                <div className="acm-form-row">
+                  <label className="acm-label">Área (m²)</label>
+                  <input
+                    type="number"
+                    min={0.01}
+                    step={0.01}
+                    className="acm-input"
+                    style={{ maxWidth: 'none' }}
+                    value={form.areaConstruccionM2 || ''}
+                    onChange={(e) => setForm({ ...form, areaConstruccionM2: Number(e.target.value) })}
+                    required
+                  />
+                </div>
+                <div className="acm-form-row">
+                  <label className="acm-label">Habitaciones</label>
+                  <input
+                    type="number"
+                    min={0}
+                    className="acm-input"
+                    style={{ maxWidth: 'none' }}
+                    value={form.habitaciones}
+                    onChange={(e) => setForm({ ...form, habitaciones: Number(e.target.value) })}
+                    required
+                  />
+                </div>
+                <div className="acm-form-row">
+                  <label className="acm-label">Baños</label>
+                  <input
+                    type="number"
+                    min={0}
+                    className="acm-input"
+                    style={{ maxWidth: 'none' }}
+                    value={form.banos}
+                    onChange={(e) => setForm({ ...form, banos: Number(e.target.value) })}
+                    required
+                  />
+                </div>
+                <div className="acm-form-row">
+                  <label className="acm-label">Parqueos</label>
+                  <input
+                    type="number"
+                    min={0}
+                    className="acm-input"
+                    style={{ maxWidth: 'none' }}
+                    value={form.parqueos}
+                    onChange={(e) => setForm({ ...form, parqueos: Number(e.target.value) })}
+                    required
+                  />
+                </div>
+                <div className="acm-form-row">
+                  <label className="acm-label">Año (construcción)</label>
+                  <input
+                    type="number"
+                    min={1900}
+                    max={2100}
+                    placeholder="Opcional"
+                    className="acm-input"
+                    style={{ maxWidth: 'none' }}
+                    value={form.anioConstruccion ?? ''}
+                    onChange={(e) => setForm({ ...form, anioConstruccion: e.target.value ? Number(e.target.value) : undefined })}
+                  />
+                </div>
+                <div className="acm-form-row">
+                  <label className="acm-label">Estado</label>
+                  <select
+                    className="acm-select"
+                    style={{ maxWidth: 'none' }}
+                    value={form.estado ?? 'disponible'}
+                    onChange={(e) => setForm({ ...form, estado: e.target.value as EstadoPropiedad })}
+                  >
+                    {ESTADOS.map((e) => (
+                      <option key={e.value} value={e.value}>{e.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="acm-form-row">
+                  <label className="acm-label">Acabado piso</label>
+                  <select
+                    className="acm-select"
+                    style={{ maxWidth: 'none' }}
+                    value={form.acabadoPisoId}
+                    onChange={(e) => setForm({ ...form, acabadoPisoId: Number(e.target.value) })}
+                    required
+                  >
+                    {finishesPiso.map((a) => (
+                      <option key={a.id} value={a.id}>{a.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="acm-form-row">
+                  <label className="acm-label">Acabado cocina</label>
+                  <select
+                    className="acm-select"
+                    style={{ maxWidth: 'none' }}
+                    value={form.acabadoCocinaId}
+                    onChange={(e) => setForm({ ...form, acabadoCocinaId: Number(e.target.value) })}
+                    required
+                  >
+                    {finishesCocina.map((a) => (
+                      <option key={a.id} value={a.id}>{a.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="acm-form-row" style={{ gridColumn: '1 / -1' }}>
+                  <label className="acm-label">Acabado baño</label>
+                  <select
+                    className="acm-select"
+                    style={{ maxWidth: 260 }}
+                    value={form.acabadoBanoId}
+                    onChange={(e) => setForm({ ...form, acabadoBanoId: Number(e.target.value) })}
+                    required
+                  >
+                    {finishesBano.map((a) => (
+                      <option key={a.id} value={a.id}>{a.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="acm-form-row acm-property-form-map-cell" style={{ gridColumn: '1 / -1' }}>
+                  <label className="acm-label">Ubicación en el mapa (opcional)</label>
+                  {showMapPicker ? (
+                    <>
+                      <div style={{ position: 'relative', overflow: 'hidden', maxHeight: 300, marginBottom: '0.5rem' }}>
+                        <MapPicker
+                          height="260px"
+                          sectorNombre={sectors.find((s) => s.id === form.sectorId)?.nombre}
+                          value={
+                            form.latitud != null && form.longitud != null
+                              ? { lat: form.latitud, lng: form.longitud }
+                              : null
+                          }
+                          onChange={(v) =>
+                            setForm({
+                              ...form,
+                              latitud: v?.lat,
+                              longitud: v?.lng,
+                            })
+                          }
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="acm-btn-secondary"
+                        style={{ fontSize: '0.8125rem' }}
+                        onClick={() => setShowMapPicker(false)}
+                      >
+                        Ocultar mapa
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="acm-btn-secondary"
+                      onClick={() => setShowMapPicker(true)}
+                    >
+                      Elegir ubicación en el mapa
+                    </button>
+                  )}
+                </div>
               </div>
-              <div style={formRow}>
-                <label>Precio</label>
-                <input
-                  type="number"
-                  min={0.01}
-                  step={0.01}
-                  style={inputStyle}
-                  value={form.precio || ''}
-                  onChange={(e) => setForm({ ...form, precio: Number(e.target.value) })}
-                  required
-                />
-              </div>
-              <div style={formRow}>
-                <label>Área (m²)</label>
-                <input
-                  type="number"
-                  min={0.01}
-                  step={0.01}
-                  style={inputStyle}
-                  value={form.areaConstruccionM2 || ''}
-                  onChange={(e) => setForm({ ...form, areaConstruccionM2: Number(e.target.value) })}
-                  required
-                />
-              </div>
-              <div style={formRow}>
-                <label>Habitaciones</label>
-                <input
-                  type="number"
-                  min={0}
-                  style={inputStyle}
-                  value={form.habitaciones}
-                  onChange={(e) => setForm({ ...form, habitaciones: Number(e.target.value) })}
-                  required
-                />
-              </div>
-              <div style={formRow}>
-                <label>Baños</label>
-                <input
-                  type="number"
-                  min={0}
-                  style={inputStyle}
-                  value={form.banos}
-                  onChange={(e) => setForm({ ...form, banos: Number(e.target.value) })}
-                  required
-                />
-              </div>
-              <div style={formRow}>
-                <label>Parqueos</label>
-                <input
-                  type="number"
-                  min={0}
-                  style={inputStyle}
-                  value={form.parqueos}
-                  onChange={(e) => setForm({ ...form, parqueos: Number(e.target.value) })}
-                  required
-                />
-              </div>
-              <div style={formRow}>
-                <label>Acabado piso</label>
-                <select
-                  style={inputStyle}
-                  value={form.acabadoPisoId}
-                  onChange={(e) => setForm({ ...form, acabadoPisoId: Number(e.target.value) })}
-                  required
-                >
-                  {finishesPiso.map((a) => (
-                    <option key={a.id} value={a.id}>{a.nombre}</option>
-                  ))}
-                </select>
-              </div>
-              <div style={formRow}>
-                <label>Acabado cocina</label>
-                <select
-                  style={inputStyle}
-                  value={form.acabadoCocinaId}
-                  onChange={(e) => setForm({ ...form, acabadoCocinaId: Number(e.target.value) })}
-                  required
-                >
-                  {finishesCocina.map((a) => (
-                    <option key={a.id} value={a.id}>{a.nombre}</option>
-                  ))}
-                </select>
-              </div>
-              <div style={formRow}>
-                <label>Acabado baño</label>
-                <select
-                  style={inputStyle}
-                  value={form.acabadoBanoId}
-                  onChange={(e) => setForm({ ...form, acabadoBanoId: Number(e.target.value) })}
-                  required
-                >
-                  {finishesBano.map((a) => (
-                    <option key={a.id} value={a.id}>{a.nombre}</option>
-                  ))}
-                </select>
-              </div>
-              {submitError && <p style={{ color: '#b91c1c' }}>{submitError}</p>}
+              {submitError && <p className="acm-error-msg">{submitError}</p>}
               <div style={{ display: 'flex', gap: 8, marginTop: '1rem' }}>
-                <button type="submit" style={{ padding: '0.5rem 1rem', background: '#0ea5e9', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+                <button type="submit" className="acm-btn-primary">
                   {editingId ? 'Guardar' : 'Crear'}
                 </button>
-                <button type="button" onClick={() => setModalOpen(false)}>
+                <button type="button" className="acm-btn-secondary" onClick={() => setModalOpen(false)}>
                   Cancelar
                 </button>
               </div>
@@ -323,3 +450,5 @@ export default function Propiedades() {
     </div>
   );
 }
+
+export default Propiedades;

@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { TipoAcabado } from '@prisma/client';
+import { TipoAcabado, EstadoPropiedad } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AMC_CONFIG } from './amc.config';
 import {
@@ -17,6 +17,9 @@ import { RunAmcDto } from './dto/run-amc.dto';
 export interface ComparableItem {
   id: number;
   sectorId: number;
+  sector: { id: number; nombre: string };
+  latitud: number | null;
+  longitud: number | null;
   precio: number;
   areaConstruccionM2: number;
   valorM2: number;
@@ -24,9 +27,16 @@ export interface ComparableItem {
   habitaciones: number;
   banos: number;
   parqueos: number;
+  anioConstruccion: number | null;
+  estado: EstadoPropiedad;
   acabadoPiso: { id: number; nombre: string; puntaje: number };
   acabadoCocina: { id: number; nombre: string; puntaje: number };
   acabadoBano: { id: number; nombre: string; puntaje: number };
+}
+
+export interface AcabadoSujeto {
+  nombre: string;
+  ponderacion: number;
 }
 
 export interface AmcResult {
@@ -37,6 +47,20 @@ export interface AmcResult {
   desviacionEstandarValorM2: number;
   tasaDesviacion: number;
   cantidadComparables: number;
+  /** Promedio de precios de los comparables (Promedio Ponderado en reportes) */
+  promedioPrecioComparables: number;
+  medianaPrecioComparables: number;
+  /** Promedio del índice de acabados de los comparables */
+  promedioAcabadoComparables: number;
+  desviacionEstandarAcabados: number;
+  tasaDesviacionAcabados: number;
+  /** Solo cuando se aplicó ajuste por acabados */
+  promedioAcabadoSujeto?: number;
+  acabadosSujeto?: {
+    piso: AcabadoSujeto;
+    cocina: AcabadoSujeto;
+    bano: AcabadoSujeto;
+  };
   comparables: ComparableItem[];
 }
 
@@ -49,6 +73,14 @@ export class AmcService {
     const tol = AMC_CONFIG.TOLERANCIA_AREA_PCT;
     const areaMin = areaM2 * (1 - tol);
     const areaMax = areaM2 * (1 + tol);
+
+    const tieneAcabados =
+      finishPisoId != null &&
+      finishPisoId > 0 &&
+      finishCocinaId != null &&
+      finishCocinaId > 0 &&
+      finishBanoId != null &&
+      finishBanoId > 0;
 
     const [propiedades, ponderaciones, acabadoPiso, acabadoCocina, acabadoBano] =
       await Promise.all([
@@ -65,12 +97,12 @@ export class AmcService {
           },
         }),
         this.prisma.ponderacionAcabado.findMany(),
-        this.prisma.acabado.findUnique({ where: { id: finishPisoId } }),
-        this.prisma.acabado.findUnique({ where: { id: finishCocinaId } }),
-        this.prisma.acabado.findUnique({ where: { id: finishBanoId } }),
+        tieneAcabados ? this.prisma.acabado.findUnique({ where: { id: finishPisoId! } }) : Promise.resolve(null),
+        tieneAcabados ? this.prisma.acabado.findUnique({ where: { id: finishCocinaId! } }) : Promise.resolve(null),
+        tieneAcabados ? this.prisma.acabado.findUnique({ where: { id: finishBanoId! } }) : Promise.resolve(null),
       ]);
 
-    if (!acabadoPiso || !acabadoCocina || !acabadoBano) {
+    if (tieneAcabados && (!acabadoPiso || !acabadoCocina || !acabadoBano)) {
       throw new BadRequestException('Uno o más IDs de acabado no existen');
     }
     if (propiedades.length === 0) {
@@ -107,6 +139,9 @@ export class AmcService {
       return {
         id: p.id,
         sectorId: p.sectorId,
+        sector: p.sector,
+        latitud: p.latitud != null ? toNum(p.latitud) : null,
+        longitud: p.longitud != null ? toNum(p.longitud) : null,
         precio,
         areaConstruccionM2: area,
         valorM2,
@@ -114,6 +149,8 @@ export class AmcService {
         habitaciones: p.habitaciones,
         banos: p.banos,
         parqueos: p.parqueos,
+        anioConstruccion: p.anioConstruccion ?? null,
+        estado: p.estado,
         acabadoPiso: {
           id: p.acabadoPiso.id,
           nombre: p.acabadoPiso.nombre,
@@ -133,28 +170,52 @@ export class AmcService {
     });
 
     const valoresM2 = comparables.map((c) => c.valorM2);
+    const precios = comparables.map((c) => c.precio);
+    const promediosAcabado = comparables.map((c) => c.promedioAcabado);
+
     const promedioValorM2 = mean(valoresM2);
     const medianaValorM2 = median(valoresM2);
     const desviacionEstandarValorM2 = std(valoresM2);
     const tasaDesviacion =
       promedioValorM2 > 0 ? desviacionEstandarValorM2 / promedioValorM2 : 0;
 
+    const promedioPrecioComparables = mean(precios);
+    const medianaPrecioComparables = median(precios);
+    const promedioAcabadoComparables = mean(promediosAcabado);
+    const desviacionEstandarAcabados = std(promediosAcabado);
+    const tasaDesviacionAcabados =
+      promedioAcabadoComparables > 0
+        ? desviacionEstandarAcabados / promedioAcabadoComparables
+        : 0;
+
     const valorBase = areaM2 * promedioValorM2;
 
-    const promedioAcabadoSujeto = promedioAcabadoPonderado(
-      toNum(acabadoPiso.puntaje),
-      toNum(acabadoCocina.puntaje),
-      toNum(acabadoBano.puntaje),
-      pesoPiso,
-      pesoCocina,
-      pesoBano,
-    );
-    const promedioAcabadoComparables = mean(comparables.map((c) => c.promedioAcabado));
-    const valorConAcabados = computeValorConAcabados(
-      valorBase,
-      promedioAcabadoSujeto,
-      promedioAcabadoComparables,
-    );
+    let valorConAcabados: number;
+    let promedioAcabadoSujeto: number | undefined;
+    let acabadosSujeto: AmcResult['acabadosSujeto'];
+
+    if (tieneAcabados && acabadoPiso && acabadoCocina && acabadoBano) {
+      promedioAcabadoSujeto = promedioAcabadoPonderado(
+        toNum(acabadoPiso.puntaje),
+        toNum(acabadoCocina.puntaje),
+        toNum(acabadoBano.puntaje),
+        pesoPiso,
+        pesoCocina,
+        pesoBano,
+      );
+      valorConAcabados = computeValorConAcabados(
+        valorBase,
+        promedioAcabadoSujeto,
+        promedioAcabadoComparables,
+      );
+      acabadosSujeto = {
+        piso: { nombre: acabadoPiso.nombre, ponderacion: pesoPiso },
+        cocina: { nombre: acabadoCocina.nombre, ponderacion: pesoCocina },
+        bano: { nombre: acabadoBano.nombre, ponderacion: pesoBano },
+      };
+    } else {
+      valorConAcabados = valorBase;
+    }
 
     return {
       valorBase: round2(valorBase),
@@ -164,6 +225,15 @@ export class AmcService {
       desviacionEstandarValorM2: round2(desviacionEstandarValorM2),
       tasaDesviacion: round4(tasaDesviacion),
       cantidadComparables: comparables.length,
+      promedioPrecioComparables: round2(promedioPrecioComparables),
+      medianaPrecioComparables: round2(medianaPrecioComparables),
+      promedioAcabadoComparables: round2(promedioAcabadoComparables),
+      desviacionEstandarAcabados: round2(desviacionEstandarAcabados),
+      tasaDesviacionAcabados: round4(tasaDesviacionAcabados),
+      ...(promedioAcabadoSujeto !== undefined && {
+        promedioAcabadoSujeto: round2(promedioAcabadoSujeto),
+      }),
+      ...(acabadosSujeto && { acabadosSujeto }),
       comparables: comparables.map((c) => ({
         ...c,
         valorM2: round2(c.valorM2),

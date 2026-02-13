@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Propiedad" ADD COLUMN IF NOT EXISTS "latitud" DECIMAL(10,7);
+ALTER TABLE "Propiedad" ADD COLUMN IF NOT EXISTS "longitud" DECIMAL(10,7);

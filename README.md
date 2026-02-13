@@ -68,4 +68,29 @@ El MVP se considera **listo** cuando se cumplan todos los criterios siguientes:
 
 ---
 
+---
+
+## Levantar backend y frontend (desde la raíz)
+
+Desde **`amc-v1`** puedes correr ambos en paralelo con un solo comando:
+
+```bash
+cd amc-v1
+npm run dev
+```
+
+Eso inicia el backend (NestJS en http://localhost:3000) y el frontend (Vite en http://localhost:5173) a la vez. Para detenerlos, usa `Ctrl+C` en la misma terminal.
+
+Scripts disponibles en la raíz de `amc-v1`:
+
+| Script         | Descripción                          |
+|----------------|--------------------------------------|
+| `npm run dev`  | Backend + frontend en paralelo       |
+| `npm run dev:backend`  | Solo backend (`start:dev`)   |
+| `npm run dev:frontend` | Solo frontend (`dev`)        |
+
+Asegúrate de tener `npm install` ya ejecutado en `backend` y en `frontend` al menos una vez.
+
+---
+
 Documentación detallada: `documentacion/GUIA_DESARROLLO_MVP.md` y `documentacion/ROADMAP_MVP.md`.

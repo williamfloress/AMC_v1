@@ -1,12 +1,12 @@
 import type { ApiError } from '../api/client';
 
 export function Loading() {
-  return <p style={{ color: '#64748b' }}>Cargando…</p>;
+  return <p className="acm-muted">Cargando…</p>;
 }
 
 export function ApiErrorMessage({ error }: { error: ApiError }) {
   return (
-    <p style={{ color: '#b91c1c' }}>
+    <p className="acm-error-msg" style={{ margin: 0 }}>
       Error: {error.status ? `(${error.status}) ` : ''}{error.message}
     </p>
   );
