@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import * as catalogApi from '../api/catalog';
 import type { Sector } from '../api/catalog';
 import { Loading, ApiErrorMessage } from '../components/ApiStatus';
-import MapPicker from '../components/MapPicker';
 import type { ApiError } from '../api/client';
 
 export default function Sectores() {
@@ -12,8 +11,6 @@ export default function Sectores() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [nombre, setNombre] = useState('');
-  const [latitud, setLatitud] = useState<number | undefined>(undefined);
-  const [longitud, setLongitud] = useState<number | undefined>(undefined);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const loadList = () => {
@@ -50,7 +47,7 @@ export default function Sectores() {
       return;
     }
     if (editingId !== null) {
-      catalogApi.updateSector(editingId, trimmed).then((res) => {
+      catalogApi.updateSector(editingId, { nombre: trimmed }).then((res) => {
         if (res.error) setSubmitError(res.error.message);
         else {
           setModalOpen(false);
@@ -58,7 +55,7 @@ export default function Sectores() {
         }
       });
     } else {
-      catalogApi.createSector(trimmed).then((res) => {
+      catalogApi.createSector({ nombre: trimmed }).then((res) => {
         if (res.error) setSubmitError(res.error.message);
         else {
           setModalOpen(false);
